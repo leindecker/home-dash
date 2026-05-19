@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id        String      @id
+  name      String
+  type      String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  logs      DeviceLog[]
+}
+
+model DeviceLog {
+  id        String   @id @default(cuid())
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id])
+  code      String
+  value     String
+  eventTime DateTime @default(now())
+
+  @@index([deviceId, eventTime])
+}
+
+model SwitchLabel {
+  id        String   @id @default(cuid())
+  deviceId  String
+  code      String
+  label     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([deviceId, code])
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String
+  totpSecret     String?
+  totpEnabled    Boolean         @default(false)
+  rememberTokens RememberToken[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model RememberToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@home-dash/api",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@10.8.2",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.0",
+    "@home-dash/types": "*",
+    "@prisma/client": "^5.0.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^16.0.0",
+    "fastify": "^4.0.0",
+    "fastify-plugin": "^4.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "next-auth": "^5.0.0-beta.31",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.7.0",
+    "speakeasy": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/speakeasy": "^2.0.10",
+    "prisma": "^5.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
