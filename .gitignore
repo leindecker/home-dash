@@ -6,4 +6,6 @@ build
 coverage
 *.tsbuildinfo
 .env
+.env.local
+.env.*
 .idea
