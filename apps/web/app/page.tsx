@@ -13,7 +13,6 @@ import {
 } from '@/lib/api';
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { useTheme, useTokens } from '@/lib/theme';
-import SpotifyCard from '@/components/SpotifyCard';
 import SwitchCard from '@/components/SwitchCard';
 import TemperatureCard, { MOCK_ROOMS, tempColor } from '@/components/TemperatureCard';
 import WeatherCard from '@/components/WeatherCard';
@@ -244,7 +243,6 @@ export default function Dashboard() {
   const [pendingToggles, setPendingToggles] = useState<Set<string>>(new Set());
   const [showAllSwitches, setShowAllSwitches] = useState(false);
   const [switchLabels, setSwitchLabels] = useState<Record<string, string>>({});
-  const [nowPlaying, setNowPlaying] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
   // Live clock
@@ -450,8 +448,8 @@ export default function Dashboard() {
                 <MetricCard
                   icon={<Music size={16} />}
                   label="Tocando agora"
-                  value={nowPlaying ?? 'Nada tocando'}
-                  accent={nowPlaying ? '#1DB954' : textMuted}
+                  value="Ver sidebar"
+                  accent={textMuted}
                   cardBg={cardBg} cardBorder={cardBorder} textMuted={textMuted}
                 />
               </div>
@@ -517,11 +515,6 @@ export default function Dashboard() {
                   getLabel={getLabel}
                   onSaveLabel={handleSaveLabel}
                 />
-              </div>
-
-              {/* ── SpotifyCard (max-width centralizado) ── */}
-              <div className="max-w-[480px]">
-                <SpotifyCard isDark={isDark} cardBg={cardBg} cardBorder={cardBorder} textMain={textMain} textMuted={textMuted} onTrackChange={setNowPlaying} />
               </div>
 
             </>

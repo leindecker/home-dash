@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useTokens } from '@/lib/theme';
 import { fetchDevices, Device } from '@/lib/api';
+import SpotifyMini from '@/components/SpotifyMini';
 
 // ─── nav config ───────────────────────────────────────────
 
@@ -210,6 +211,9 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </div>
         </div>
       </div>
+
+      {/* Spotify mini player */}
+      <SpotifyMini />
 
       {/* Logged-in user */}
       <UserSection cardBorder={cardBorder} textMain={textMain} textMuted={textMuted} />
