@@ -7,6 +7,7 @@ import { authRoutes } from './routes/auth.route';
 import { deviceRoutes } from './routes/devices.route';
 import { labelRoutes } from './routes/labels.route';
 import { weatherRoutes } from './routes/weather.route';
+import { roomsRoutes } from './routes/rooms.route';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ async function start() {
   await app.register(deviceRoutes, { prefix: '/devices' });
   await app.register(labelRoutes, { prefix: '/devices' });
   await app.register(weatherRoutes, { prefix: '/weather' });
+  await app.register(roomsRoutes, { prefix: '/rooms' });
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: '0.0.0.0' });

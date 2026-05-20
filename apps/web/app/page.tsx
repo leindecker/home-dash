@@ -14,6 +14,7 @@ import {
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { useTheme, useTokens } from '@/lib/theme';
 import SpotifyCard from '@/components/SpotifyCard';
+import SwitchCard from '@/components/SwitchCard';
 import TemperatureCard, { MOCK_ROOMS, tempColor } from '@/components/TemperatureCard';
 import WeatherCard from '@/components/WeatherCard';
 
@@ -503,40 +504,19 @@ export default function Dashboard() {
                 </div>
 
                 {/* Interruptores (SwitchCard) */}
-                <div className="rounded-[14px] border p-5 flex flex-col" style={{ background: cardBg, borderColor: cardBorder }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-sm font-semibold" style={{ color: textMain }}>Interruptores</h2>
-                    {lightsOnCount > 0 && (
-                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#0D2A20', color: '#34D399' }}>
-                        {lightsOnCount} ligad{lightsOnCount === 1 ? 'o' : 'os'}
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-4 flex-1">
-                    {previewSwitches.map((sw) => (
-                      <SwitchDeviceBlock
-                        key={sw.id} device={sw} isDark={isDark}
-                        textMain={textMain} textMuted={textMuted}
-                        getStatus={getStatus} handleToggle={handleToggle}
-                        pendingToggles={pendingToggles}
-                        getLabel={getLabel} onSaveLabel={handleSaveLabel}
-                      />
-                    ))}
-                  </div>
-                  {switchDevices.length > 3 && (
-                    <button
-                      onClick={() => setShowAllSwitches(true)}
-                      className="mt-4 w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-opacity hover:opacity-70"
-                      style={{ borderColor: cardBorder, color: textMuted, background: 'transparent' }}
-                    >
-                      <span className="flex items-center gap-2 text-xs">
-                        <LayoutGrid size={13} />
-                        Ver todos os interruptores
-                      </span>
-                      <ChevronRight size={13} />
-                    </button>
-                  )}
-                </div>
+                <SwitchCard
+                  isDark={isDark}
+                  textMain={textMain}
+                  textMuted={textMuted}
+                  cardBg={cardBg}
+                  cardBorder={cardBorder}
+                  lightsOnCount={lightsOnCount}
+                  getStatus={getStatus}
+                  handleToggle={handleToggle}
+                  pendingToggles={pendingToggles}
+                  getLabel={getLabel}
+                  onSaveLabel={handleSaveLabel}
+                />
               </div>
 
               {/* ── SpotifyCard (max-width centralizado) ── */}

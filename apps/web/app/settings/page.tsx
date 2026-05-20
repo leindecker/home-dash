@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useTokens, useTheme } from '@/lib/theme';
 import { fetchDevices, fetchMe, setup2FA, confirm2FA, disable2FA, Device, UserProfile } from '@/lib/api';
+import RoomsSettings from '@/components/RoomsSettings';
 
 // ─── Integration item ──────────────────────────────────────
 
@@ -384,7 +385,7 @@ export default function SettingsPage() {
   return (
     <div className="p-4 sm:p-6 min-h-screen" style={{ background: pageBg }}>
       {/* Topbar */}
-      <div className="flex items-start justify-between mb-6 gap-4 max-w-2xl mx-auto">
+      <div className="flex items-start justify-between mb-6 gap-4 max-w-4xl mx-auto">
         <div>
           <h1 className="text-xl font-bold" style={{ color: textMain }}>
             Configurações
@@ -402,6 +403,11 @@ export default function SettingsPage() {
           <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
           Atualizar
         </button>
+      </div>
+
+      {/* Rooms section — wider layout */}
+      <div className="mb-4 max-w-4xl mx-auto">
+        <RoomsSettings />
       </div>
 
       <div className="space-y-4 max-w-2xl mx-auto">
