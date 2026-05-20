@@ -34,9 +34,9 @@ async function start() {
   setInterval(async () => {
     try {
       await fetch(`${SELF_URL}/health`);
-      console.log('Self-ping ok');
+      console.log('[ping] Self-ping ok:', new Date().toISOString());
     } catch (e) {
-      console.error('Self-ping failed:', e);
+      console.error('[ping] Self-ping failed:', e);
     }
   }, 10 * 60 * 1000);
 }
