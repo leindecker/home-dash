@@ -2,14 +2,17 @@ import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 
 export default auth((req) => {
-  const isLoggedIn  = !!req.auth;
-  const { pathname } = req.nextUrl;
-  const isAuthRoute  = pathname.startsWith('/api/auth') || pathname.startsWith('/api/spotify');
-  const isLoginPage  = pathname === '/login';
+  const isLoggedIn = !!req.auth;
+  const isLoginPage = req.nextUrl.pathname === '/login';
+  const isAuthRoute = req.nextUrl.pathname.startsWith('/api/auth');
 
-  if (isAuthRoute)                        return NextResponse.next();
-  if (!isLoggedIn && !isLoginPage)        return NextResponse.redirect(new URL('/login', req.url));
-  if (isLoggedIn  && isLoginPage)         return NextResponse.redirect(new URL('/', req.url));
+  if (isAuthRoute) return NextResponse.next();
+  if (!isLoggedIn && !isLoginPage) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
+  if (isLoggedIn && isLoginPage) {
+    return NextResponse.redirect(new URL('/', req.url));
+  }
   return NextResponse.next();
 });
 
