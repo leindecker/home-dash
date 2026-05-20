@@ -16,6 +16,12 @@ async function start() {
   await app.register(cors, { origin: '*' });
   await app.register(socketPlugin);
   await app.register(authPlugin);
+
+  app.get('/health', async () => ({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  }));
+
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(deviceRoutes, { prefix: '/devices' });
   await app.register(labelRoutes, { prefix: '/devices' });
@@ -23,6 +29,16 @@ async function start() {
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: '0.0.0.0' });
+
+  const SELF_URL = process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:3001';
+  setInterval(async () => {
+    try {
+      await fetch(`${SELF_URL}/health`);
+      console.log('Self-ping ok');
+    } catch (e) {
+      console.error('Self-ping failed:', e);
+    }
+  }, 10 * 60 * 1000);
 }
 
 start().catch((err) => {
