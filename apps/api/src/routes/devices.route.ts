@@ -39,15 +39,6 @@ export async function deviceRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.get<{ Params: { id: string } }>('/:id/logs', async (req, reply) => {
-    try {
-      return await getDeviceLogs(req.params.id);
-    } catch (err) {
-      reply.status(500);
-      return { error: (err as Error).message };
-    }
-  });
-
   const LOCK_ID = 'eb7dac4405840b22d2bniz';
 
   fastify.get('/lock/logs', async (_req, reply) => {
@@ -82,6 +73,15 @@ export async function deviceRoutes(fastify: FastifyInstance) {
 
         return { eventTime: ts, action, method, description };
       });
+    } catch (err) {
+      reply.status(500);
+      return { error: (err as Error).message };
+    }
+  });
+
+  fastify.get<{ Params: { id: string } }>('/:id/logs', async (req, reply) => {
+    try {
+      return await getDeviceLogs(req.params.id);
     } catch (err) {
       reply.status(500);
       return { error: (err as Error).message };
