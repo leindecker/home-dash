@@ -178,15 +178,21 @@ export async function getLockLogs(id: string) {
 
   try {
     const result = await tuyaRequest<{ records: unknown[] }>('GET', path);
+    console.log('[lock-logs] raw tuya response:', JSON.stringify(result, null, 2));
+    console.log('[lock-logs] first record:', JSON.stringify(result?.records?.[0] ?? result, null, 2));
     return result?.records ?? [];
   } catch {
     try {
       const fallbackPath = `/v1.2/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50`;
       const fallback = await tuyaRequest<{ logs: unknown[] }>('GET', fallbackPath);
+      console.log('[lock-logs] raw tuya response:', JSON.stringify(fallback, null, 2));
+      console.log('[lock-logs] first record:', JSON.stringify(fallback?.logs?.[0] ?? fallback, null, 2));
       return fallback?.logs ?? [];
     } catch {
       const statusPath = `/v1.0/devices/${id}/status`;
       const status = await tuyaRequest<{ code: string; value: unknown }[]>('GET', statusPath);
+      console.log('[lock-logs] raw tuya response:', JSON.stringify(status, null, 2));
+      console.log('[lock-logs] first record:', JSON.stringify((status as unknown[])?.[0] ?? status, null, 2));
       return status ?? [];
     }
   }

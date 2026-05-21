@@ -45,6 +45,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
     try {
       const rawLogs = await getLockLogs(LOCK_ID);
       console.log('[lock-logs] raw result:', JSON.stringify(rawLogs?.slice(0, 2)));
+      console.log('[lock-logs] rawLogs[0]:', JSON.stringify(rawLogs?.[0], null, 2));
 
       return rawLogs.map((entry) => {
         const log = entry as { event_time?: number; code?: string };
