@@ -18,6 +18,7 @@ export const KNOWN_DEVICES = [
   { id: 'eb512e387c175ae79dgdri', name: 'Interruptor Banheiro Social', type: 'switch', buttons: 2 },
   { id: 'eb0460cf1eb84bb17b2ba8', name: 'Interruptor Suite', type: 'switch', buttons: 3 },
   { id: 'eb470708b10489b219sklf', name: 'Interruptor Quarto', type: 'switch', buttons: 2 },
+  { id: 'eb7dac4405840b22d2bniz', name: 'Smart Lock X3', type: 'lock', buttons: 0 },
 ] as const;
 
 interface TokenInfo {
@@ -166,5 +167,13 @@ export async function getDeviceLogs(id: string) {
     'GET',
     path
   );
+  return result?.logs ?? [];
+}
+
+export async function getLockLogs(id: string) {
+  const now = Date.now();
+  const start = now - 7 * 24 * 60 * 60 * 1000;
+  const path = `/v1.0/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50`;
+  const result = await tuyaRequest<{ logs: unknown[] }>('GET', path);
   return result?.logs ?? [];
 }
