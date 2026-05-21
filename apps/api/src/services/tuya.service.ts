@@ -174,26 +174,30 @@ export async function getLockLogs(id: string) {
   const now = Date.now();
   const start = now - 7 * 24 * 60 * 60 * 1000;
 
-  const path = `/v1.0/devices/${id}/door-lock/record?start_time=${start}&end_time=${now}&size=50`;
+  // Endpoint correto para histórico de eventos de fechadura Tuya
+  const path = `/v1.0/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50&type=6`;
 
   try {
-    const result = await tuyaRequest<{ records: unknown[] }>('GET', path);
-    console.log('[lock-logs] raw tuya response:', JSON.stringify(result, null, 2));
-    console.log('[lock-logs] first record:', JSON.stringify(result?.records?.[0] ?? result, null, 2));
-    return result?.records ?? [];
-  } catch {
+    const result = await tuyaRequest<{
+      logs: { event_time: number; code: string; value: unknown }[]
+    }>('GET', path);
+
+    console.log('[lock-logs] result:', JSON.stringify(result, null, 2));
+    return result?.logs ?? [];
+  } catch (err) {
+    console.error('[lock-logs] endpoint failed:', err);
+
+    // Segundo fallback — endpoint v1.2
     try {
-      const fallbackPath = `/v1.2/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50`;
-      const fallback = await tuyaRequest<{ logs: unknown[] }>('GET', fallbackPath);
-      console.log('[lock-logs] raw tuya response:', JSON.stringify(fallback, null, 2));
-      console.log('[lock-logs] first record:', JSON.stringify(fallback?.logs?.[0] ?? fallback, null, 2));
-      return fallback?.logs ?? [];
-    } catch {
-      const statusPath = `/v1.0/devices/${id}/status`;
-      const status = await tuyaRequest<{ code: string; value: unknown }[]>('GET', statusPath);
-      console.log('[lock-logs] raw tuya response:', JSON.stringify(status, null, 2));
-      console.log('[lock-logs] first record:', JSON.stringify((status as unknown[])?.[0] ?? status, null, 2));
-      return status ?? [];
+      const path2 = `/v1.2/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50`;
+      const result2 = await tuyaRequest<{
+        logs: { event_time: number; code: string; value: unknown }[]
+      }>('GET', path2);
+      console.log('[lock-logs] v1.2 result:', JSON.stringify(result2, null, 2));
+      return result2?.logs ?? [];
+    } catch (err2) {
+      console.error('[lock-logs] v1.2 also failed:', err2);
+      return [];
     }
   }
 }

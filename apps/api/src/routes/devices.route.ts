@@ -44,37 +44,57 @@ export async function deviceRoutes(fastify: FastifyInstance) {
   fastify.get('/lock/logs', async (_req, reply) => {
     try {
       const rawLogs = await getLockLogs(LOCK_ID);
-      console.log('[lock-logs] raw result:', JSON.stringify(rawLogs?.slice(0, 2)));
       console.log('[lock-logs] rawLogs[0]:', JSON.stringify(rawLogs?.[0], null, 2));
 
-      return rawLogs.map((entry) => {
-        const log = entry as { event_time?: number; code?: string };
-        const ts = log.event_time ? new Date(log.event_time).toISOString() : '';
-        const code = log.code ?? '';
+      return (rawLogs as Array<Record<string, unknown>>).map((log) => {
+        // Tuya pode retornar timestamp em ms ou segundos
+        const rawTime = log.event_time as number;
+        let ts = '';
+        if (rawTime) {
+          // Se timestamp em segundos (menor que ano 2100 em ms)
+          const ms = rawTime < 9999999999 ? rawTime * 1000 : rawTime;
+          ts = new Date(ms).toISOString();
+        }
+
+        const code = (log.code as string) ?? '';
+        const value = log.value;
 
         let action: string;
         let method: string;
         let description: string;
 
-        switch (code) {
-          case 'unlock_fingerprint':
-            action = 'unlock'; method = 'fingerprint'; description = 'Aberta por digital'; break;
-          case 'unlock_password':
-            action = 'unlock'; method = 'password'; description = 'Aberta por senha'; break;
-          case 'unlock_app':
-            action = 'unlock'; method = 'app'; description = 'Aberta pelo app'; break;
-          case 'unlock_key':
-            action = 'unlock'; method = 'key'; description = 'Aberta por chave física'; break;
-          case 'lock_motor':
-            action = 'lock'; method = 'auto'; description = 'Trancada automaticamente'; break;
-          case 'alarm_lock':
-            action = 'alarm'; method = 'alarm'; description = 'Tentativa inválida'; break;
-          default:
-            action = 'unknown'; method = 'unknown'; description = 'Evento desconhecido';
+        // Mapeamento expandido dos códigos da Tuya
+        if (code === 'unlock_fingerprint' || (code === '' && value === 'fingerprint')) {
+          action = 'unlock'; method = 'fingerprint'; description = 'Aberta por digital';
+        } else if (code === 'unlock_password') {
+          action = 'unlock'; method = 'password'; description = 'Aberta por senha';
+        } else if (code === 'unlock_app' || code === 'unlock_phone') {
+          action = 'unlock'; method = 'app'; description = 'Aberta pelo app';
+        } else if (code === 'unlock_key') {
+          action = 'unlock'; method = 'key'; description = 'Aberta por chave física';
+        } else if (code === 'unlock_face') {
+          action = 'unlock'; method = 'face'; description = 'Aberta por reconhecimento facial';
+        } else if (code === 'unlock_card') {
+          action = 'unlock'; method = 'card'; description = 'Aberta por cartão';
+        } else if (code === 'unlock_temporary') {
+          action = 'unlock'; method = 'temp'; description = 'Aberta por senha temporária';
+        } else if (code === 'lock_motor' || code === 'lock' || code === 'auto_lock') {
+          action = 'lock'; method = 'auto'; description = 'Trancada automaticamente';
+        } else if (code === 'alarm_lock' || code === 'alarm') {
+          action = 'alarm'; method = 'alarm';
+          const alarmDesc: Record<string, string> = {
+            wrong_finger: 'Tentativa inválida — dedo não reconhecido',
+            wrong_password: 'Tentativa inválida — senha incorreta',
+            wrong_card: 'Tentativa inválida — cartão não reconhecido',
+            wrong_face: 'Tentativa inválida — rosto não reconhecido',
+          };
+          description = alarmDesc[value as string] ?? 'Tentativa inválida';
+        } else {
+          action = 'unknown'; method = 'unknown'; description = `Evento: ${code || 'desconhecido'}`;
         }
 
         return { eventTime: ts, action, method, description };
-      });
+      }).filter(log => log.action !== 'unknown'); // Remove eventos desconhecidos
     } catch (err) {
       reply.status(500);
       return { error: (err as Error).message };
