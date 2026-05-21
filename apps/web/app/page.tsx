@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   Sun, Moon, Wifi, WifiOff,
   Lightbulb, DoorOpen, DoorClosed,
@@ -470,7 +471,7 @@ export default function Dashboard() {
                 {/* Porta Principal (LockCard) */}
                 <div className="rounded-[14px] border p-5" style={{ background: cardBg, borderColor: cardBorder }}>
                   <h2 className="text-sm font-semibold mb-4" style={{ color: textMain }}>Porta Principal</h2>
-                  <div className="flex items-center gap-3 mb-5">
+                  <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
                       {isDoorOpen ? <DoorOpen size={20} color="#EF4444" /> : <DoorClosed size={20} color="#1D9E75" />}
                     </div>
@@ -478,27 +479,16 @@ export default function Dashboard() {
                       {isDoorOpen ? 'ABERTA' : 'TRANCADA'}
                     </span>
                   </div>
-                  <p className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: textMuted }}>
-                    Últimas atividades
-                  </p>
-                  {logs.length === 0 ? (
-                    <p className="text-sm" style={{ color: textMuted }}>Sem atividades recentes</p>
-                  ) : (
-                    <ul className="space-y-2.5">
-                      {logs.map((log, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <span className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: '#1D9E75' }} />
-                          <span className="text-xs tabular-nums flex-shrink-0" style={{ color: textMuted }}>
-                            {new Date(log.eventTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <span className="text-sm min-w-0 truncate" style={{ color: textMain }}>
-                            {log.code.replace(/_/g, ' ')}
-                            <span className="ml-1" style={{ color: textMuted }}>→ {log.value}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <div className="mt-auto pt-3 border-t" style={{ borderColor: cardBorder }}>
+                    <Link
+                      href="/history"
+                      className="flex items-center justify-end gap-1 text-xs transition-opacity hover:opacity-70"
+                      style={{ color: textMuted }}
+                    >
+                      Ver histórico completo
+                      <ChevronRight size={13} />
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Interruptores (SwitchCard) */}
