@@ -173,7 +173,21 @@ export async function getDeviceLogs(id: string) {
 export async function getLockLogs(id: string) {
   const now = Date.now();
   const start = now - 7 * 24 * 60 * 60 * 1000;
-  const path = `/v1.0/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50`;
-  const result = await tuyaRequest<{ logs: unknown[] }>('GET', path);
-  return result?.logs ?? [];
+
+  const path = `/v1.0/devices/${id}/door-lock/record?start_time=${start}&end_time=${now}&size=50`;
+
+  try {
+    const result = await tuyaRequest<{ records: unknown[] }>('GET', path);
+    return result?.records ?? [];
+  } catch {
+    try {
+      const fallbackPath = `/v1.2/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50`;
+      const fallback = await tuyaRequest<{ logs: unknown[] }>('GET', fallbackPath);
+      return fallback?.logs ?? [];
+    } catch {
+      const statusPath = `/v1.0/devices/${id}/status`;
+      const status = await tuyaRequest<{ code: string; value: unknown }[]>('GET', statusPath);
+      return status ?? [];
+    }
+  }
 }
