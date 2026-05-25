@@ -15,7 +15,7 @@ import {
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { useTheme, useTokens } from '@/lib/theme';
 import SwitchCard from '@/components/SwitchCard';
-import TemperatureCard, { MOCK_ROOMS, tempColor } from '@/components/TemperatureCard';
+import { MOCK_ROOMS, tempColor } from '@/components/TemperatureCard';
 import WeatherCard from '@/components/WeatherCard';
 
 // ─── helpers ──────────────────────────────────────────────
@@ -458,11 +458,6 @@ export default function Dashboard() {
               {/* ── WeatherCard full-width ── */}
               <div className="mb-4">
                 <WeatherCard isDark={isDark} cardBg={cardBg} cardBorder={cardBorder} textMain={textMain} textMuted={textMuted} />
-              </div>
-
-              {/* ── TemperatureCard full-width ── */}
-              <div className="mb-4">
-                <TemperatureCard isDark={isDark} cardBg={cardBg} cardBorder={cardBorder} textMain={textMain} textMuted={textMuted} />
               </div>
 
               {/* ── Grid principal 2-col ── */}

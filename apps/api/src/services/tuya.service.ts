@@ -93,14 +93,25 @@ async function getToken(): Promise<string> {
   return tokenInfo!.accessToken;
 }
 
+function sortedPath(path: string): string {
+  const [pathname, qs] = path.split('?');
+  if (!qs) return pathname;
+  const sorted = [...new URLSearchParams(qs).entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join('&');
+  return `${pathname}?${sorted}`;
+}
+
 async function tuyaRequest<T>(method: string, path: string, body?: object): Promise<T> {
+  const canonicalPath = sortedPath(path);
   const token = await getToken();
   const timestamp = Date.now();
   const nonce = crypto.randomUUID();
   const bodyStr = body ? JSON.stringify(body) : '';
-  const sign = buildSign(token, timestamp, nonce, method, path, bodyStr);
+  const sign = buildSign(token, timestamp, nonce, method, canonicalPath, bodyStr);
 
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${BASE_URL}${canonicalPath}`, {
     method,
     headers: {
       client_id: ACCESS_ID,
@@ -117,7 +128,7 @@ async function tuyaRequest<T>(method: string, path: string, body?: object): Prom
   const data = await response.json() as { success: boolean; msg?: string; result: T };
 
   if (!data.success) {
-    throw new Error(`Tuya request failed [${method} ${path}]: ${data.msg}`);
+    throw new Error(`Tuya request failed [${method} ${canonicalPath}]: ${data.msg}`);
   }
 
   return data.result;
@@ -162,42 +173,10 @@ export async function sendCommand(
 export async function getDeviceLogs(id: string) {
   const now = Date.now();
   const start = now - 24 * 60 * 60 * 1000;
-  const path = `/v1.0/devices/${id}/logs?start_time=${start}&end_time=${now}&size=20`;
+  const path = `/v1.0/devices/${id}/logs?end_time=${now}&size=20&start_time=${start}&type=1`;
   const result = await tuyaRequest<{ logs: unknown[] }>(
     'GET',
     path
   );
   return result?.logs ?? [];
-}
-
-export async function getLockLogs(id: string) {
-  const now = Date.now();
-  const start = now - 7 * 24 * 60 * 60 * 1000;
-
-  // Endpoint correto para histórico de eventos de fechadura Tuya
-  const path = `/v1.0/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50&type=6`;
-
-  try {
-    const result = await tuyaRequest<{
-      logs: { event_time: number; code: string; value: unknown }[]
-    }>('GET', path);
-
-    console.log('[lock-logs] result:', JSON.stringify(result, null, 2));
-    return result?.logs ?? [];
-  } catch (err) {
-    console.error('[lock-logs] endpoint failed:', err);
-
-    // Segundo fallback — endpoint v1.2
-    try {
-      const path2 = `/v1.2/devices/${id}/logs?start_time=${start}&end_time=${now}&size=50`;
-      const result2 = await tuyaRequest<{
-        logs: { event_time: number; code: string; value: unknown }[]
-      }>('GET', path2);
-      console.log('[lock-logs] v1.2 result:', JSON.stringify(result2, null, 2));
-      return result2?.logs ?? [];
-    } catch (err2) {
-      console.error('[lock-logs] v1.2 also failed:', err2);
-      return [];
-    }
-  }
 }

@@ -11,6 +11,7 @@ import {
 import { useTokens } from '@/lib/theme';
 import { fetchDevices, Device } from '@/lib/api';
 import SpotifyMini from '@/components/SpotifyMini';
+import { MOCK_ROOMS, RoomData } from '@/components/TemperatureCard';
 
 // ─── nav config ───────────────────────────────────────────
 
@@ -105,6 +106,14 @@ function UserSection({ cardBorder, textMain, textMuted }: {
   );
 }
 
+// ─── Temperature helpers ───────────────────────────────────
+
+function sidebarTempColor(temp: number): string {
+  if (temp < 20) return '#60A5FA';
+  if (temp <= 26) return '#1D9E75';
+  return '#F59E0B';
+}
+
 // ─── Sidebar ──────────────────────────────────────────────
 
 interface SidebarProps {
@@ -116,11 +125,18 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { isDark, sidebarBg, cardBorder, textMain, textMuted } = useTokens();
   const [hub, setHub] = useState<Device | null | undefined>(undefined);
+  const [tempRooms, setTempRooms] = useState<RoomData[]>([]);
 
   useEffect(() => {
     fetchDevices()
       .then((devs) => setHub(devs.find((d) => d.type === 'hub') ?? null))
       .catch(() => setHub(null));
+  }, []);
+
+  useEffect(() => {
+    setTempRooms(MOCK_ROOMS);
+    const id = setInterval(() => setTempRooms(MOCK_ROOMS), 5 * 60 * 1000);
+    return () => clearInterval(id);
   }, []);
 
   const navContent = (
@@ -143,6 +159,43 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         <p className="text-[11px] ml-7" style={{ color: textMuted }}>Painel de automação</p>
       </div>
       <div style={{ height: 1, margin: '0 20px', background: cardBorder }} />
+
+      {/* Temperature widget */}
+      {tempRooms.length > 0 && (
+        <div className="px-4 pt-3 pb-1">
+          <div className="grid grid-cols-3 gap-1.5">
+            {tempRooms.map((room) => {
+              const color = sidebarTempColor(room.temp);
+              return (
+                <div
+                  key={room.name}
+                  className="flex flex-col rounded-lg"
+                  style={{
+                    padding: '6px 8px',
+                    background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                  }}
+                >
+                  <p
+                    className="text-[9px] font-medium truncate leading-tight mb-1"
+                    style={{ color: textMuted }}
+                  >
+                    {room.name}
+                  </p>
+                  <p
+                    className="text-[13px] font-bold tabular-nums leading-none"
+                    style={{ color }}
+                  >
+                    {room.temp.toFixed(1)}°
+                  </p>
+                  <p className="text-[9px] mt-0.5" style={{ color: textMuted }}>
+                    {room.humidity}%
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="px-3 pt-4 flex-1 space-y-5 overflow-y-auto">

@@ -19,8 +19,8 @@ export interface RoomData {
 
 export const MOCK_ROOMS: RoomData[] = [
   { name: 'Sala',         icon: 'sofa',   temp: 23.5, humidity: 62 },
-  { name: 'Quarto Casal', icon: 'bed',    temp: 19.2, humidity: 58 },
-  { name: 'Escritório',   icon: 'laptop', temp: 27.8, humidity: 71 },
+  { name: 'Quarto', icon: 'bed',    temp: 19.2, humidity: 58 },
+  { name: 'Office',   icon: 'laptop', temp: 27.8, humidity: 71 },
 ];
 
 // ─── helpers ──────────────────────────────────────────────

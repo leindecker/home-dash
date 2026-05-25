@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
-  ChevronRight, Lightbulb, Pencil, X, LayoutGrid,
+  ChevronRight, Lightbulb, LightbulbOff, Pencil, X, LayoutGrid,
   Home, Sofa, UtensilsCrossed, BedDouble, Laptop,
   Sun, Building2, Droplets, Car, TreePine, ArrowUpDown,
 } from 'lucide-react';
@@ -174,9 +174,12 @@ function RoomSection({
 
   return (
     <div>
-      <button
-        className="w-full flex items-center gap-2.5 py-2.5 text-left transition-opacity hover:opacity-80"
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full flex items-center gap-2.5 py-2.5 text-left transition-opacity hover:opacity-80 cursor-pointer"
         onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpanded((v) => !v); }}
       >
         <RoomIconCircle icon={room.icon} anyOn={anyOn} />
         <span className="flex-1 min-w-0 text-[13px] font-semibold truncate" style={{ color: textMain }}>
@@ -204,7 +207,7 @@ function RoomSection({
             transition: 'transform 0.2s',
           }}
         />
-      </button>
+      </div>
 
       <div
         style={{
@@ -246,7 +249,7 @@ interface SwitchCardProps {
   cardBorder: string;
   lightsOnCount: number;
   getStatus: (deviceId: string, code: string) => boolean;
-  handleToggle: (deviceId: string, code: string) => void;
+  handleToggle: (deviceId: string, code: string) => void | Promise<void>;
   pendingToggles: Set<string>;
   getLabel: (deviceId: string, code: string) => string;
   onSaveLabel: (deviceId: string, code: string, newLabel: string) => Promise<void>;
@@ -257,18 +260,68 @@ export default function SwitchCard({
   getStatus, handleToggle, pendingToggles, getLabel, onSaveLabel,
 }: SwitchCardProps) {
   const { rooms, loading } = useRooms();
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [hoverBtn, setHoverBtn] = useState(false);
+
+  async function turnOffAll() {
+    setLoadingAll(true);
+    try {
+      await Promise.all(
+        rooms.flatMap((room) =>
+          room.switches
+            .filter((sw) => getStatus(sw.deviceId, sw.code))
+            .map((sw) => handleToggle(sw.deviceId, sw.code))
+        )
+      );
+    } finally {
+      setLoadingAll(false);
+    }
+  }
 
   return (
     <div className="rounded-[14px] border p-5 flex flex-col" style={{ background: cardBg, borderColor: cardBorder }}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold" style={{ color: textMain }}>Interruptores</h2>
         {lightsOnCount > 0 && (
-          <span
-            className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: '#0D2A20', color: '#34D399' }}
-          >
-            {lightsOnCount} ligad{lightsOnCount === 1 ? 'o' : 'os'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: '#0D2A20', color: '#34D399' }}
+            >
+              {lightsOnCount} ligad{lightsOnCount === 1 ? 'o' : 'os'}
+            </span>
+            <button
+              onClick={turnOffAll}
+              disabled={loadingAll}
+              onMouseEnter={() => setHoverBtn(true)}
+              onMouseLeave={() => setHoverBtn(false)}
+              style={{
+                background: 'none',
+                border: `0.5px solid ${hoverBtn ? '#E24B4A' : cardBorder}`,
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 12,
+                fontWeight: 500,
+                color: hoverBtn ? '#E24B4A' : textMuted,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                transition: 'color 0.15s, border-color 0.15s',
+                opacity: loadingAll ? 0.6 : 1,
+              }}
+            >
+              {loadingAll ? (
+                <span
+                  className="inline-block w-3 h-3 rounded-full border border-t-transparent animate-spin flex-shrink-0"
+                  style={{ borderColor: 'currentColor', borderTopColor: 'transparent' }}
+                />
+              ) : (
+                <LightbulbOff size={12} />
+              )}
+              Apagar tudo
+            </button>
+          </div>
         )}
       </div>
 
@@ -293,7 +346,11 @@ export default function SwitchCard({
         </div>
       ) : (
         <div>
-          {rooms.map((room, i) => (
+          {[...rooms].sort((a, b) => {
+            const aOn = a.switches.some(s => getStatus(s.deviceId, s.code)) ? 1 : 0;
+            const bOn = b.switches.some(s => getStatus(s.deviceId, s.code)) ? 1 : 0;
+            return bOn - aOn;
+          }).map((room, i) => (
             <RoomSection
               key={room.id}
               room={room}

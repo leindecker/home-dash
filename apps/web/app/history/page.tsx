@@ -1,13 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  AlertCircle,
-  Fingerprint, KeyRound, Smartphone, Key, ShieldX, Lock,
-  Lightbulb, LightbulbOff,
-} from 'lucide-react';
+import { AlertCircle, Lightbulb, LightbulbOff } from 'lucide-react';
 import { useTokens } from '@/lib/theme';
-import { fetchDevices, fetchDeviceLogs, fetchLockLogs, LockLog } from '@/lib/api';
+import { fetchDevices, fetchDeviceLogs } from '@/lib/api';
 
 // ─── types ────────────────────────────────────────────────
 
@@ -16,20 +12,15 @@ interface DayUsage {
   minutes: number;
 }
 
-type FilterTab = 'all' | 'lock' | 'lights';
-
-interface UnifiedActivity {
+interface Activity {
   key: string;
   ts: number;
-  category: 'lock' | 'lights';
   iconBg: string;
   iconColor: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   IconComp: React.ComponentType<any>;
   description: string;
   timeLabel: string;
-  methodLabel?: string;
-  isAlert: boolean;
 }
 
 const DOW_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -49,41 +40,6 @@ function formatEventTime(ts: number): string {
   const day = date.getDate();
   const month = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
   return `${day} ${month}, ${time}`;
-}
-
-function lockIconConfig(method: string) {
-  switch (method) {
-    case 'fingerprint': return { iconBg: '#0D2A20', iconColor: '#34D399', IconComp: Fingerprint };
-    case 'password':    return { iconBg: '#0D1829', iconColor: '#60A5FA', IconComp: KeyRound };
-    case 'app':         return { iconBg: '#1a0d29', iconColor: '#A78BFA', IconComp: Smartphone };
-    case 'key':         return { iconBg: '#2A1A06', iconColor: '#F59E0B', IconComp: Key };
-    case 'alarm':       return { iconBg: '#2A0D0D', iconColor: '#E24B4A', IconComp: ShieldX };
-    default:            return { iconBg: '#1f2937', iconColor: '#9ca3af', IconComp: Lock };
-  }
-}
-
-function lockDescription(method: string): string {
-  switch (method) {
-    case 'fingerprint': return 'Porta aberta por digital';
-    case 'password':    return 'Porta aberta por senha';
-    case 'app':         return 'Porta aberta pelo app';
-    case 'key':         return 'Porta aberta por chave física';
-    case 'auto':        return 'Porta trancada automaticamente';
-    case 'alarm':       return 'Tentativa inválida na fechadura';
-    default:            return 'Evento na fechadura';
-  }
-}
-
-function lockMethodLabel(method: string): string {
-  switch (method) {
-    case 'fingerprint': return 'Digital reconhecida';
-    case 'password':    return 'Senha de usuário';
-    case 'app':         return 'Abertura pelo app';
-    case 'key':         return 'Chave física';
-    case 'auto':        return 'Travamento automático';
-    case 'alarm':       return 'Tentativa bloqueada';
-    default:            return 'Método desconhecido';
-  }
 }
 
 function switchCodeLabel(code: string): string {
@@ -129,33 +85,6 @@ function BarChart({
   );
 }
 
-// ─── FilterPill ────────────────────────────────────────────
-
-function FilterPill({
-  active, label, onClick, cardBg, cardBorder, textMuted,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  cardBg: string;
-  cardBorder: string;
-  textMuted: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
-      style={
-        active
-          ? { background: '#0D2A20', color: '#34D399', border: '1px solid #1D9E75' }
-          : { background: cardBg, color: textMuted, border: `1px solid ${cardBorder}` }
-      }
-    >
-      {label}
-    </button>
-  );
-}
-
 // ─── ActivitySkeleton ──────────────────────────────────────
 
 function ActivitySkeleton({ cardBorder }: { cardBorder: string }) {
@@ -180,10 +109,9 @@ function ActivitySkeleton({ cardBorder }: { cardBorder: string }) {
 export default function HistoryPage() {
   const { cardBg, cardBorder, textMain, textMuted, pageBg } = useTokens();
   const [barData, setBarData] = useState<DayUsage[]>([]);
-  const [activity, setActivity] = useState<UnifiedActivity[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [filter, setFilter] = useState<FilterTab>('all');
 
   useEffect(() => {
     async function load() {
@@ -191,36 +119,14 @@ export default function HistoryPage() {
         const devices = await fetchDevices();
         const switchDevices = devices.filter((d) => d.type === 'switch');
 
-        const [switchResults, lockLogs] = await Promise.all([
-          Promise.allSettled(
-            switchDevices.map((d) =>
-              fetchDeviceLogs(d.id).then((logs) => ({ device: d, logs }))
-            )
-          ),
-          fetchLockLogs().catch((): LockLog[] => []),
-        ]);
+        const switchResults = await Promise.allSettled(
+          switchDevices.map((d) =>
+            fetchDeviceLogs(d.id).then((logs) => ({ device: d, logs }))
+          )
+        );
 
-        const unified: UnifiedActivity[] = [];
+        const unified: Activity[] = [];
 
-        // Lock activities
-        lockLogs.forEach((log, i) => {
-          const ts = new Date(log.eventTime).getTime();
-          const { iconBg, iconColor, IconComp } = lockIconConfig(log.method);
-          unified.push({
-            key: `lock-${i}`,
-            ts,
-            category: 'lock',
-            iconBg,
-            iconColor,
-            IconComp,
-            description: lockDescription(log.method),
-            timeLabel: formatEventTime(ts),
-            methodLabel: lockMethodLabel(log.method),
-            isAlert: log.action === 'alarm',
-          });
-        });
-
-        // Lights activities
         switchResults.forEach((result) => {
           if (result.status !== 'fulfilled') return;
           const { device, logs } = result.value;
@@ -231,13 +137,11 @@ export default function HistoryPage() {
             unified.push({
               key: `sw-${device.id}-${j}`,
               ts,
-              category: 'lights',
               iconBg: isOn ? '#0D2A20' : '#1A1D27',
               iconColor: isOn ? '#34D399' : '#71717a',
               IconComp: isOn ? Lightbulb : LightbulbOff,
               description: `${deviceShort} — ${switchCodeLabel(log.code)} ${isOn ? 'ligada' : 'desligada'}`,
               timeLabel: formatEventTime(ts),
-              isAlert: false,
             });
           });
         });
@@ -245,7 +149,6 @@ export default function HistoryPage() {
         unified.sort((a, b) => b.ts - a.ts);
         setActivity(unified.slice(0, 100));
 
-        // Bar chart from switch logs
         const allSwitchLogs = switchResults.flatMap((r) =>
           r.status === 'fulfilled'
             ? r.value.logs.map((l) => ({ ts: l.eventTime * 1000, value: l.value }))
@@ -271,30 +174,11 @@ export default function HistoryPage() {
     load();
   }, []);
 
-  const FILTERS: { id: FilterTab; label: string }[] = [
-    { id: 'all', label: 'Todos' },
-    { id: 'lock', label: 'Fechadura' },
-    { id: 'lights', label: 'Luzes' },
-  ];
-
-  const filtered = activity.filter((a) => filter === 'all' || a.category === filter);
-
-  function emptyMessage(): string {
-    if (filter === 'lock') return 'Nenhum evento de fechadura registrado';
-    if (filter === 'lights') return 'Nenhum evento de luzes registrado';
-    return 'Nenhuma atividade registrada';
-  }
-
   return (
     <div className="p-4 sm:p-6 min-h-screen" style={{ background: pageBg }}>
-      {/* Topbar */}
       <div className="mb-6 max-w-2xl mx-auto">
-        <h1 className="text-xl font-bold" style={{ color: textMain }}>
-          Histórico
-        </h1>
-        <p className="text-sm mt-0.5" style={{ color: textMuted }}>
-          Últimos 7 dias de atividade
-        </p>
+        <h1 className="text-xl font-bold" style={{ color: textMain }}>Histórico</h1>
+        <p className="text-sm mt-0.5" style={{ color: textMuted }}>Últimos 7 dias de atividade</p>
       </div>
 
       {error ? (
@@ -307,11 +191,8 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-4 max-w-2xl mx-auto">
-          {/* Bar chart card */}
-          <div
-            className="rounded-2xl border p-5"
-            style={{ background: cardBg, borderColor: cardBorder }}
-          >
+          {/* Bar chart */}
+          <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: cardBorder }}>
             <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: textMuted }}>
               Uso de Luzes — minutos/dia
             </p>
@@ -320,54 +201,28 @@ export default function HistoryPage() {
             ) : barData.length > 0 ? (
               <BarChart data={barData} textMuted={textMuted} cardBorder={cardBorder} />
             ) : (
-              <p className="text-sm text-center py-8" style={{ color: textMuted }}>
-                Sem dados de uso
-              </p>
+              <p className="text-sm text-center py-8" style={{ color: textMuted }}>Sem dados de uso</p>
             )}
           </div>
 
           {/* Activity feed */}
-          <div
-            className="rounded-2xl border overflow-hidden"
-            style={{ background: cardBg, borderColor: cardBorder }}
-          >
-            {/* Header + filters */}
-            <div className="px-5 py-4 border-b flex items-center gap-3 flex-wrap" style={{ borderColor: cardBorder }}>
-              <p className="text-xs font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: textMuted }}>
+          <div className="rounded-2xl border overflow-hidden" style={{ background: cardBg, borderColor: cardBorder }}>
+            <div className="px-5 py-4 border-b" style={{ borderColor: cardBorder }}>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: textMuted }}>
                 Atividade recente
               </p>
-              <div className="flex items-center gap-2 ml-auto">
-                {FILTERS.map((f) => (
-                  <FilterPill
-                    key={f.id}
-                    active={filter === f.id}
-                    label={f.label}
-                    onClick={() => setFilter(f.id)}
-                    cardBg={cardBg}
-                    cardBorder={cardBorder}
-                    textMuted={textMuted}
-                  />
-                ))}
-              </div>
             </div>
 
             {loading ? (
               <ActivitySkeleton cardBorder={cardBorder} />
-            ) : filtered.length === 0 ? (
+            ) : activity.length === 0 ? (
               <p className="text-sm text-center py-8" style={{ color: textMuted }}>
-                {emptyMessage()}
+                Nenhuma atividade registrada
               </p>
             ) : (
-              <div
-                className="divide-y overflow-y-auto"
-                style={{ borderColor: cardBorder, maxHeight: 400 }}
-              >
-                {filtered.map((entry) => (
-                  <div
-                    key={entry.key}
-                    className="flex items-center gap-3 px-5 py-3"
-                    style={entry.isAlert ? { background: 'rgba(42,13,13,0.5)' } : undefined}
-                  >
+              <div className="divide-y overflow-y-auto" style={{ borderColor: cardBorder, maxHeight: 400 }}>
+                {activity.map((entry) => (
+                  <div key={entry.key} className="flex items-center gap-3 px-5 py-3">
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{ background: entry.iconBg }}
@@ -375,22 +230,12 @@ export default function HistoryPage() {
                       <entry.IconComp size={14} style={{ color: entry.iconColor }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p
-                        className="text-xs font-medium truncate"
-                        style={{ color: entry.isAlert ? '#E24B4A' : textMain }}
-                      >
+                      <p className="text-xs font-medium truncate" style={{ color: textMain }}>
                         {entry.description}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <p className="text-[11px]" style={{ color: textMuted }}>
-                          {entry.timeLabel}
-                        </p>
-                        {entry.methodLabel && (
-                          <p className="text-[11px]" style={{ color: textMuted }}>
-                            · {entry.methodLabel}
-                          </p>
-                        )}
-                      </div>
+                      <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>
+                        {entry.timeLabel}
+                      </p>
                     </div>
                   </div>
                 ))}

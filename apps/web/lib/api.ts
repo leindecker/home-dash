@@ -28,17 +28,6 @@ export function fetchDeviceLogs(deviceId: string) {
   return apiFetch<DeviceLog[]>(`/devices/${deviceId}/logs`);
 }
 
-export interface LockLog {
-  eventTime: string;
-  action: string;
-  method: string;
-  description: string;
-}
-
-export function fetchLockLogs() {
-  return apiFetch<LockLog[]>('/devices/lock/logs');
-}
-
 export function sendDeviceCommand(
   deviceId: string,
   commands: { code: string; value: boolean | string | number }[]
