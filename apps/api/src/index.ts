@@ -8,6 +8,8 @@ import { deviceRoutes } from './routes/devices.route';
 import { labelRoutes } from './routes/labels.route';
 import { weatherRoutes } from './routes/weather.route';
 import { roomsRoutes } from './routes/rooms.route';
+import { webhookRoutes } from './routes/webhook.route';
+import { startPulsarConsumer } from './services/tuya.pulsar';
 
 dotenv.config();
 
@@ -28,9 +30,12 @@ async function start() {
   await app.register(labelRoutes, { prefix: '/devices' });
   await app.register(weatherRoutes, { prefix: '/weather' });
   await app.register(roomsRoutes, { prefix: '/rooms' });
+  await app.register(webhookRoutes, { prefix: '/webhook' });
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: '0.0.0.0' });
+
+  startPulsarConsumer(app.io, app.log);
 
   const SELF_URL = process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:3001';
   setInterval(async () => {

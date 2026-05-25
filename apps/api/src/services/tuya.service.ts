@@ -170,6 +170,24 @@ export async function sendCommand(
   return tuyaRequest('POST', `/v1.0/devices/${id}/commands`, { commands });
 }
 
+export async function getLockLogs(id: string) {
+  const now   = Math.floor(Date.now() / 1000);
+  const start = now - 7 * 24 * 60 * 60;
+  const path  = `/v1.1/devices/${id}/door-lock/open-logs?page_no=1&page_size=20&start_time=${start}&end_time=${now}`;
+
+  const result = await tuyaRequest<{
+    logs: {
+      update_time: number;
+      nick_name: string;
+      unlock_name: string;
+      status: { code: string; value: string };
+    }[];
+    total: number;
+  }>('GET', path);
+
+  return result?.logs ?? [];
+}
+
 export async function getDeviceLogs(id: string) {
   const now = Date.now();
   const start = now - 24 * 60 * 60 * 1000;

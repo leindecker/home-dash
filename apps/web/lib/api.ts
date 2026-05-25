@@ -28,6 +28,29 @@ export function fetchDeviceLogs(deviceId: string) {
   return apiFetch<DeviceLog[]>(`/devices/${deviceId}/logs`);
 }
 
+export interface LockState {
+  status: 'locked' | 'unlocked' | 'unknown';
+  method: string | null;
+  userName: string | null;
+  updatedAt: string;
+}
+
+export function fetchLockState() {
+  return apiFetch<LockState>('/devices/lock/state');
+}
+
+export interface LockLog {
+  eventTime: string;
+  method: string;
+  label: string;
+  userName: string | null;
+  unlockName: string | null;
+}
+
+export function fetchLockLogs() {
+  return apiFetch<LockLog[]>('/devices/lock/logs');
+}
+
 export function sendDeviceCommand(
   deviceId: string,
   commands: { code: string; value: boolean | string | number }[]

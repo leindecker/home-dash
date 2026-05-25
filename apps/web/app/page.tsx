@@ -8,13 +8,15 @@ import {
   LayoutGrid, ChevronRight, X, Pencil, Music, Thermometer,
 } from 'lucide-react';
 import {
-  fetchDevices, fetchDeviceLogs, sendDeviceCommand,
+  fetchDevices, sendDeviceCommand,
   fetchSwitchLabels, updateSwitchLabel,
-  Device, DeviceLog,
+  fetchLockState, LockState,
+  Device,
 } from '@/lib/api';
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { useTheme, useTokens } from '@/lib/theme';
 import SwitchCard from '@/components/SwitchCard';
+import LockCard from '@/components/LockCard';
 import { MOCK_ROOMS, tempColor } from '@/components/TemperatureCard';
 import WeatherCard from '@/components/WeatherCard';
 
@@ -239,7 +241,7 @@ export default function Dashboard() {
   const { pageBg, cardBg, cardBorder, textMain, textMuted } = useTokens();
 
   const [devices, setDevices] = useState<Device[]>([]);
-  const [logs, setLogs] = useState<DeviceLog[]>([]);
+  const [lockStatus, setLockStatus] = useState<LockState>({ status: 'unknown', method: null, userName: null, updatedAt: '' });
   const [loading, setLoading] = useState(true);
   const [pendingToggles, setPendingToggles] = useState<Set<string>>(new Set());
   const [showAllSwitches, setShowAllSwitches] = useState(false);
@@ -260,11 +262,11 @@ export default function Dashboard() {
 
   const loadData = useCallback(async () => {
     try {
-      const devicesData = await fetchDevices();
+      const [devicesData, lockState] = await Promise.all([fetchDevices(), fetchLockState().catch(() => null)]);
       setDevices(devicesData);
+      if (lockState) setLockStatus(lockState);
 
       const switchDev = devicesData.filter((d) => d.type === 'switch');
-      const hub = devicesData.find((d) => d.type === 'hub');
 
       const [labelsResults] = await Promise.all([
         Promise.allSettled(
@@ -272,9 +274,6 @@ export default function Dashboard() {
             fetchSwitchLabels(d.id).then((entries) => ({ deviceId: d.id, entries }))
           )
         ),
-        hub
-          ? fetchDeviceLogs(hub.id).catch(() => [] as DeviceLog[]).then((l) => setLogs(l.slice(0, 4)))
-          : Promise.resolve(),
       ]);
 
       const labelsMap: Record<string, string> = {};
@@ -305,7 +304,8 @@ export default function Dashboard() {
         );
       }
     );
-    return () => { socket.off('device:status'); disconnectSocket(); };
+    socket.on('lock:status', (state: LockState) => setLockStatus(state));
+    return () => { socket.off('device:status'); socket.off('lock:status'); disconnectSocket(); };
   }, [loadData]);
 
   // ── derived ────────────────────────────────────────────
@@ -325,8 +325,6 @@ export default function Dashboard() {
     .flatMap((d) => d.status)
     .filter((s) => /^switch_\d+$/.test(s.code))
     .length;
-
-  const isDoorOpen = logs[0]?.code === 'doorcontact_state' && logs[0]?.value === 'true';
 
   // ── label helpers ──────────────────────────────────────
 
@@ -419,10 +417,10 @@ export default function Dashboard() {
               {/* ── 5 métricas ── */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
                 <MetricCard
-                  icon={isDoorOpen ? <DoorOpen size={16} /> : <DoorClosed size={16} />}
+                  icon={lockStatus.status === 'unlocked' ? <DoorOpen size={16} /> : <DoorClosed size={16} />}
                   label="Porta principal"
-                  value={isDoorOpen ? 'Aberta' : 'Trancada'}
-                  accent={isDoorOpen ? '#EF4444' : '#1D9E75'}
+                  value={lockStatus.status === 'unlocked' ? 'Destravada' : 'Trancada'}
+                  accent={lockStatus.status === 'unlocked' ? '#F59E0B' : '#1D9E75'}
                   cardBg={cardBg} cardBorder={cardBorder} textMuted={textMuted}
                 />
                 <MetricCard
@@ -463,28 +461,13 @@ export default function Dashboard() {
               {/* ── Grid principal 2-col ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
-                {/* Porta Principal (LockCard) */}
-                <div className="rounded-[14px] border p-5" style={{ background: cardBg, borderColor: cardBorder }}>
-                  <h2 className="text-sm font-semibold mb-4" style={{ color: textMain }}>Porta Principal</h2>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
-                      {isDoorOpen ? <DoorOpen size={20} color="#EF4444" /> : <DoorClosed size={20} color="#1D9E75" />}
-                    </div>
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: isDoorOpen ? 'rgba(239,68,68,0.15)' : 'rgba(29,158,117,0.15)', color: isDoorOpen ? '#EF4444' : '#1D9E75' }}>
-                      {isDoorOpen ? 'ABERTA' : 'TRANCADA'}
-                    </span>
-                  </div>
-                  <div className="mt-auto pt-3 border-t" style={{ borderColor: cardBorder }}>
-                    <Link
-                      href="/history"
-                      className="flex items-center justify-end gap-1 text-xs transition-opacity hover:opacity-70"
-                      style={{ color: textMuted }}
-                    >
-                      Ver histórico completo
-                      <ChevronRight size={13} />
-                    </Link>
-                  </div>
-                </div>
+                {/* Acessos (LockCard) */}
+                <LockCard
+                  cardBg={cardBg}
+                  cardBorder={cardBorder}
+                  textMain={textMain}
+                  textMuted={textMuted}
+                />
 
                 {/* Interruptores (SwitchCard) */}
                 <SwitchCard
