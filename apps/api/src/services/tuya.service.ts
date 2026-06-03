@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import { cache, TTL } from './cache.service';
 
 dotenv.config();
 
@@ -125,16 +126,37 @@ async function tuyaRequest<T>(method: string, path: string, body?: object): Prom
     ...(body ? { body: bodyStr } : {}),
   });
 
-  const data = await response.json() as { success: boolean; msg?: string; result: T };
+  const data = await response.json() as { success: boolean; code?: number; msg?: string; result: T };
 
   if (!data.success) {
-    throw new Error(`Tuya request failed [${method} ${canonicalPath}]: ${data.msg}`);
+    console.error('[tuya] request failed', {
+      method,
+      path: canonicalPath,
+      httpStatus: response.status,
+      tuyaCode: data.code,
+      msg: data.msg,
+      body: bodyStr || '(empty)',
+    });
+    throw new Error(`Tuya request failed [${method} ${canonicalPath}] code=${data.code}: ${data.msg}`);
   }
 
   return data.result;
 }
 
-export async function getDevices() {
+type DeviceInfo = {
+  id: string; name: string; type: string; buttons: number;
+  online: boolean; status: { code: string; value: unknown }[];
+};
+
+export async function getDevices(): Promise<DeviceInfo[]> {
+  const cacheKey = 'devices:list';
+  const cached = cache.get<DeviceInfo[]>(cacheKey);
+  if (cached) {
+    console.log('[cache] hit: devices:list');
+    return cached;
+  }
+  console.log('[cache] miss: devices:list → buscando na Tuya');
+
   const results = await Promise.allSettled(
     KNOWN_DEVICES.map(async (meta) => {
       const info = await tuyaRequest<{
@@ -152,49 +174,110 @@ export async function getDevices() {
     })
   );
 
-  return results.map((r, i) =>
+  const list = results.map((r, i) =>
     r.status === 'fulfilled'
       ? r.value
       : { ...KNOWN_DEVICES[i], online: false, status: [] }
   );
+
+  cache.set(cacheKey, list, TTL.DEVICES_LIST);
+  return list;
 }
 
 export async function getDeviceStatus(id: string) {
-  return tuyaRequest<{ code: string; value: unknown }[]>('GET', `/v1.0/devices/${id}/status`);
+  const cacheKey = `device:status:${id}`;
+  const cached = cache.get<{ code: string; value: unknown }[]>(cacheKey);
+  if (cached) {
+    console.log(`[cache] hit: ${cacheKey}`);
+    return cached;
+  }
+  console.log(`[cache] miss: ${cacheKey} → buscando na Tuya`);
+
+  const result = await tuyaRequest<{ code: string; value: unknown }[]>('GET', `/v1.0/devices/${id}/status`);
+  cache.set(cacheKey, result, TTL.DEVICE_STATUS);
+  return result;
 }
 
 export async function sendCommand(
   id: string,
   commands: { code: string; value: boolean | string | number }[]
 ) {
-  return tuyaRequest('POST', `/v1.0/devices/${id}/commands`, { commands });
+  const result = await tuyaRequest('POST', `/v1.0/devices/${id}/commands`, { commands });
+
+  // Invalida cache do dispositivo após comando
+  cache.invalidate(`device:status:${id}`);
+  cache.invalidate('devices:list');
+  console.log(`[cache] invalidated after command: ${id}`);
+
+  return result;
 }
 
+type LockLog = {
+  update_time: number;
+  nick_name: string;
+  unlock_name: string;
+  status: { code: string; value: string };
+};
+
 export async function getLockLogs(id: string) {
+  const cacheKey = `lock:logs:${id}`;
+  const cached = cache.get<LockLog[]>(cacheKey);
+  if (cached) {
+    console.log(`[cache] hit: ${cacheKey}`);
+    return cached;
+  }
+  console.log(`[cache] miss: ${cacheKey} → buscando na Tuya`);
+
   const now   = Math.floor(Date.now() / 1000);
   const start = now - 7 * 24 * 60 * 60;
   const path  = `/v1.1/devices/${id}/door-lock/open-logs?page_no=1&page_size=20&start_time=${start}&end_time=${now}`;
 
   const result = await tuyaRequest<{
-    logs: {
-      update_time: number;
-      nick_name: string;
-      unlock_name: string;
-      status: { code: string; value: string };
-    }[];
+    logs: LockLog[];
     total: number;
   }>('GET', path);
 
-  return result?.logs ?? [];
+  const logs = result?.logs ?? [];
+  cache.set(cacheKey, logs, TTL.LOCK_LOGS);
+  return logs;
 }
 
+type DeviceLogEntry = { code: string; value: string; eventTime: number; eventId: string };
+
 export async function getDeviceLogs(id: string) {
+  const cacheKey = `device:logs:${id}`;
+  const cached = cache.get<DeviceLogEntry[]>(cacheKey);
+  if (cached) {
+    console.log(`[cache] hit: ${cacheKey}`);
+    return cached;
+  }
+  console.log(`[cache] miss: ${cacheKey} → buscando na Tuya`);
+
   const now = Date.now();
   const start = now - 24 * 60 * 60 * 1000;
   const path = `/v1.0/devices/${id}/logs?end_time=${now}&size=20&start_time=${start}&type=1`;
-  const result = await tuyaRequest<{ logs: unknown[] }>(
-    'GET',
-    path
-  );
-  return result?.logs ?? [];
+  const result = await tuyaRequest<{
+    logs: {
+      code?: string;
+      value?: string;
+      event_time?: number;
+      event_id?: number | string;
+    }[];
+  }>('GET', path);
+
+  const logs = (result?.logs ?? [])
+    .filter((log) => log.code && log.value !== undefined)
+    .map((log) => ({
+      code:      log.code!,
+      value:     String(log.value),
+      eventTime: log.event_time
+        ? (log.event_time > 9_999_999_999
+            ? Math.floor(log.event_time / 1000)
+            : log.event_time)
+        : 0,
+      eventId:   String(log.event_id ?? ''),
+    }));
+
+  cache.set(cacheKey, logs, TTL.DEVICE_LOGS);
+  return logs;
 }

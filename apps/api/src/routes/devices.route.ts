@@ -34,8 +34,15 @@ export async function deviceRoutes(fastify: FastifyInstance) {
       try {
         return await sendCommand(req.params.id, req.body.commands);
       } catch (err) {
+        const error = err as Error;
+        console.error('[route] /:id/command error', {
+          deviceId: req.params.id,
+          commands: req.body.commands,
+          message: error.message,
+          stack: error.stack,
+        });
         reply.status(500);
-        return { error: (err as Error).message };
+        return { error: error.message };
       }
     }
   );

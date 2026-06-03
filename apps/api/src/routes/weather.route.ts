@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify';
+import { cache, TTL } from '../services/cache.service';
 
 const OWM = 'https://api.openweathermap.org/data/2.5';
 
@@ -58,10 +59,6 @@ export interface WeatherResponse {
   hourly: { time: string; temp: number; icon: string; rain: number }[];
   forecast: { dow: string; icon: string; hi: number; lo: number }[];
 }
-
-// ─── in-process cache (per lat,lon) ───────────────────────
-
-const cacheMap = new Map<string, { data: WeatherResponse; expiresAt: number }>();
 
 function formatHour(dt: number, tzOffset: number): string {
   const d = new Date((dt + tzOffset) * 1000);
@@ -168,16 +165,17 @@ export async function weatherRoutes(fastify: FastifyInstance) {
       return { error: 'lat and lon must be valid numbers' };
     }
 
-    const cacheKey = `${lat},${lon}`;
-    const now = Date.now();
-    const cached = cacheMap.get(cacheKey);
-    if (cached && cached.expiresAt > now) {
-      return cached.data;
+    const cacheKey = `weather:${lat},${lon}`;
+    const cached = cache.get<WeatherResponse>(cacheKey);
+    if (cached) {
+      console.log('[cache] hit: weather');
+      return cached;
     }
+    console.log('[cache] miss: weather → buscando na OWM');
 
     try {
       const data = await fetchFromOWM(apiKey, lat, lon);
-      cacheMap.set(cacheKey, { data, expiresAt: now + 10 * 60 * 1000 });
+      cache.set(cacheKey, data, TTL.WEATHER);
       return data;
     } catch (err) {
       reply.status(502);
