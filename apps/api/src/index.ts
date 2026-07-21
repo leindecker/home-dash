@@ -9,6 +9,7 @@ import { labelRoutes } from './routes/labels.route';
 import { weatherRoutes } from './routes/weather.route';
 import { roomsRoutes } from './routes/rooms.route';
 import { webhookRoutes } from './routes/webhook.route';
+import { vacuumRoutes } from './routes/vacuum.route';
 import { startPulsarConsumer } from './services/tuya.pulsar';
 import { cache } from './services/cache.service';
 
@@ -38,6 +39,7 @@ async function start() {
   await app.register(weatherRoutes, { prefix: '/weather' });
   await app.register(roomsRoutes, { prefix: '/rooms' });
   await app.register(webhookRoutes, { prefix: '/webhook' });
+  await app.register(vacuumRoutes, { prefix: '/vacuum' });
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: '0.0.0.0' });

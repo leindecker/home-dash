@@ -21,6 +21,7 @@
     "fastify": "^4.0.0",
     "fastify-plugin": "^4.0.0",
     "jsonwebtoken": "^9.0.3",
+    "miio": "^0.15.6",
     "qrcode": "^1.5.4",
     "socket.io": "^4.7.0",
     "speakeasy": "^2.0.0",

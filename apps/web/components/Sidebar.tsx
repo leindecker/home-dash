@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import {
-  LayoutDashboard, Zap, BarChart2, Settings, Wifi, WifiOff, LogOut,
+  LayoutDashboard, Zap, BarChart2, Settings, Wifi, WifiOff, LogOut, Bot,
 } from 'lucide-react';
 import { useTokens } from '@/lib/theme';
 import { fetchDevices, Device } from '@/lib/api';
@@ -16,9 +16,10 @@ import { MOCK_ROOMS, RoomData } from '@/components/TemperatureCard';
 // ─── nav config ───────────────────────────────────────────
 
 const NAV_MAIN = [
-  { href: '/',         icon: LayoutDashboard, label: 'Home'       },
-  { href: '/routines', icon: Zap,             label: 'Rotinas'    },
-  { href: '/history',  icon: BarChart2,        label: 'Histórico'  },
+  { href: '/',          icon: LayoutDashboard, label: 'Home'      },
+  { href: '/routines',  icon: Zap,             label: 'Rotinas'   },
+  { href: '/history',   icon: BarChart2,       label: 'Histórico' },
+  { href: '/cleaning',  icon: Bot,             label: 'Limpeza'   },
 ] as const;
 
 const NAV_SYSTEM = [
