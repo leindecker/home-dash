@@ -71,8 +71,8 @@ function buildStatus(state: Record<string, number>, summary: unknown[][]) {
     error:     s.error_code,
     offline:   false as boolean,
     lastClean: summary?.[0] ? {
-      duration: Math.round(summary[0][1] / 60) + ' min',
-      area:     Math.round(summary[0][2] / 10000) + ' m²',
+      duration: Math.round((summary[0][1] as number) / 60) + ' min',
+      area:     Math.round((summary[0][2] as number) / 10000) + ' m²',
       date:     new Date((summary[0][0] as number) * 1000).toLocaleString('pt-BR'),
     } : null,
   };
